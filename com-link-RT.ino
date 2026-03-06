@@ -21,10 +21,6 @@
  * Зарезервированные типы пакетов:
  * 0x01, 0x02 - Команда PING (запрос/ответ)
  * 0x03, 0x04 - Команда MILLIS (запрос/ответ) с поддержкой подписки
- * 0x05, 0x06 - Команда DISTANCE (запрос/ответ) с поддержкой подписки
- * 0x07, 0x08 - Команда GYRO (запрос/ответ) с поддержкой подписки и калибровки
- * 0x09, 0x0A - Команда SERVO (запрос/ответ)
- * 0x0B, 0x0C - Команда MOTORS (запрос/ответ)
  *
  * Служебные биты (для MILLIS):
  * 0x80 (10000000) - SUBSCRIBE    (Подписаться на поток данных)
@@ -36,10 +32,6 @@
 
 #include "src/commands/ping.h"
 #include "src/commands/millis.h"
-#include "src/commands/distance.h"
-#include "src/commands/gyro.h"
-#include "src/commands/servo.h"
-#include "src/commands/motors.h"
 
 ComLinkRTProtocol::ProtocolHandler protocol;
 
@@ -48,10 +40,6 @@ void setup()
     protocol = ComLinkRTProtocol::ProtocolHandler();
     protocol.AddHandler(CommandPing::PACKET_TYPE, CommandPing::Handler, nullptr, nullptr);
     protocol.AddHandler(CommandMillis::PACKET_TYPE, CommandMillis::Handler, CommandMillis::Processor, nullptr);
-    protocol.AddHandler(CommandDistance::PACKET_TYPE, CommandDistance::Handler, CommandDistance::Processor, CommandDistance::Init);
-    protocol.AddHandler(CommandServo::PACKET_TYPE, CommandServo::Handler, CommandServo::Processor, CommandServo::Init);
-    protocol.AddHandler(CommandMotors::PACKET_TYPE, CommandMotors::Handler, nullptr, CommandMotors::Init);
-    // protocol.AddHandler(CommandGyro::PACKET_TYPE, CommandGyro::Handler, CommandGyro::Processor, CommandGyro::Init);
 
     protocol.Begin();
 }
