@@ -8,6 +8,8 @@
 #define SERVO_MAX 600
 #define SERVO_FREQ 50
 
+#define SERVO_DISABLE_SMOOTH
+
 namespace CommandServo
 {
     const uint8_t PACKET_TYPE_REQUEST = 0x09;

@@ -132,10 +132,14 @@ namespace CommandServo
             case MOVE_IMMEDIATE:
                 ProcessImmediateMove(taskQueue[index]);
                 break;
-                
+
             case MOVE_SMOOTH_LOW:
             case MOVE_SMOOTH_HIGH:
+#ifdef SERVO_DISABLE_SMOOTH
+                ProcessImmediateMove(taskQueue[index]);
+#else
                 ProcessSmoothMove(taskQueue[index]);
+#endif
                 break;
         }
         
