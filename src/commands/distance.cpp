@@ -38,7 +38,7 @@ namespace CommandDistance
         }
         
         public:
-        DistanceHandler() : SubscriptionHandler(100, 10000, PACKET_TYPE_RESPONSE) {}
+        DistanceHandler() : SubscriptionHandler(1000, 10000, PACKET_TYPE_RESPONSE) {}
     };
 
     DistanceHandler distanceHandler;
