@@ -1,14 +1,16 @@
 #pragma once
 #include <stdint.h>
+#include "../core/board_config.h"
 
-#define READING_SPEED 115200
+#define READING_SPEED SERIAL_BAUD_RATE
+#define LOOP_DELAY MAIN_LOOP_DELAY_MS
+
 #define BUFFER_SIZE 256
 #define SYNC_BYTE1 0xAA
 #define SYNC_BYTE2 0x55
 #define ZERO_PACKET_ID 0x0000
 #define EMPTY_SERVICE_BITS 0x00
 #define PROTOCOL_VERSION 0x01
-#define LOOP_DELAY 1
 
 #define SERVICE_BIT_SUBSCRIBE 0x80    // 10000000
 #define SERVICE_BIT_UNSUBSCRIBED 0x40 // 01000000

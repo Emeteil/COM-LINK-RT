@@ -1,15 +1,6 @@
 #pragma once
 #include "../protocol/com_protocol.h"
-
-#define MOTOR1_ENA_PIN PE10
-#define MOTOR1_IN1_PIN PE11
-#define MOTOR1_IN2_PIN PE12
-#define MOTOR1_MASK 0x01
-
-#define MOTOR2_ENA_PIN PE13
-#define MOTOR2_IN1_PIN PE14
-#define MOTOR2_IN2_PIN PE15
-#define MOTOR2_MASK 0x02
+#include "../core/board_config.h"
 
 namespace CommandMotors
 {

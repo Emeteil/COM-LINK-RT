@@ -1,12 +1,12 @@
 #pragma once
 #include "../protocol/com_protocol.h"
-#include "../core/i2c_settings.h"
+#include "../core/board_config.h"
 
-#define MAX_CHANNELS 16
-#define MAX_TASKS 10
-#define SERVO_MIN 150
-#define SERVO_MAX 600
-#define SERVO_FREQ 50
+#define MAX_CHANNELS SERVO_MAX_CHANNELS
+#define MAX_TASKS SERVO_MAX_TASKS
+#define SERVO_MIN PWM_SERVO_MIN
+#define SERVO_MAX PWM_SERVO_MAX
+#define SERVO_FREQ PWM_SERVO_FREQ_HZ
 
 #define SERVO_DISABLE_SMOOTH
 

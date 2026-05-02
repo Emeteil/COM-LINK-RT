@@ -1,8 +1,9 @@
 #pragma once
 #include "../protocol/com_protocol.h"
+#include "../core/board_config.h"
 
-#define TRIG_PIN PC1
-#define ECHO_PIN PC2
+#define TRIG_PIN HC_SR04_TRIG_PIN
+#define ECHO_PIN HC_SR04_ECHO_PIN
 
 namespace CommandDistance
 {   
