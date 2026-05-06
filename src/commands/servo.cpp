@@ -197,7 +197,7 @@ namespace CommandServo
         initialized = true;
     }
     
-    void Handler(ComLinkRTProtocol::PacketHeader header, uint8_t* data)
+    void Handler(const ComLinkRTProtocol::PacketHeader& header, const uint8_t* data)
     {
         if (!initialized || header.dataLength != sizeof(ServoCommand))
             return;

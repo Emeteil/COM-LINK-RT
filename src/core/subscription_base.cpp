@@ -23,7 +23,7 @@ namespace CommandSubscription
         return (high4_source & 0xF0) | (low4_source & 0x0F);
     }
 
-    void SubscriptionHandler::HandleSubscription(ComLinkRTProtocol::PacketHeader header, uint8_t* data)
+    void SubscriptionHandler::HandleSubscription(const ComLinkRTProtocol::PacketHeader& header, const uint8_t* data)
     {
         if (header.serviceBits & SERVICE_BIT_SUBSCRIBE && header.packetId != ZERO_PACKET_ID)
         {

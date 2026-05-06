@@ -1,24 +1,22 @@
 #pragma once
 #include "com_protocol_parser.h"
-#include <vector>
-#include <functional>
-#include <unordered_map>
 
 namespace ComLinkRTProtocol
 {
     class ProtocolHandler
     {
         private:
-        struct CommandHandler
+        struct CommandSlot
         {
-            uint8_t packetType;
-            std::function<void(PacketHeader, uint8_t*)> handler;
-            std::function<void()> processor;
+            PacketHandlerFn handler;
+            PacketProcessorFn processor;
         };
-        std::unordered_map<uint8_t, CommandHandler> handlersTable;
-        std::vector<uint8_t> packetTypes;
 
-        void HandlePacket(const PacketHeader &header);
+        CommandSlot handlersTable[256];
+        PacketProcessorFn processorsList[32];
+        uint8_t processorsCount;
+
+        void HandlePacket();
 
         public:
         ProtocolParser parser;
@@ -26,11 +24,8 @@ namespace ComLinkRTProtocol
         ProtocolHandler();
 
         void Begin();
-
-        void AddHandler(uint8_t packetType, std::function<void(PacketHeader, uint8_t*)> handler, std::function<void()> processor, std::function<void()> initFunc);
-
+        void AddHandler(uint8_t packetType, PacketHandlerFn handler, PacketProcessorFn processor, PacketInitFn initFunc);
         void Update();
-
-        void SendPacket(const uint8_t *data, uint16_t length, uint16_t packetId) const;
+        void SendPacket(const uint8_t* data, uint16_t length, uint16_t packetId) const;
     };
 }

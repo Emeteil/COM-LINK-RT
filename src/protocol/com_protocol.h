@@ -3,19 +3,18 @@
 #include "../core/board_config.h"
 
 #define READING_SPEED SERIAL_BAUD_RATE
-#define LOOP_DELAY MAIN_LOOP_DELAY_MS
 
 #define BUFFER_SIZE 256
 #define SYNC_BYTE1 0xAA
 #define SYNC_BYTE2 0x55
 #define ZERO_PACKET_ID 0x0000
 #define EMPTY_SERVICE_BITS 0x00
-#define PROTOCOL_VERSION 0x01
+#define PROTOCOL_VERSION 0x02
 
-#define SERVICE_BIT_SUBSCRIBE 0x80    // 10000000
-#define SERVICE_BIT_UNSUBSCRIBED 0x40 // 01000000
-#define SERVICE_BIT_KEEP_ALIVE 0x20   // 00100000
-#define SERVICE_BIT_UNSUBSCRIBE 0x10  // 00010000
+#define SERVICE_BIT_SUBSCRIBE     0x80
+#define SERVICE_BIT_UNSUBSCRIBED  0x40
+#define SERVICE_BIT_KEEP_ALIVE    0x20
+#define SERVICE_BIT_UNSUBSCRIBE   0x10
 
 namespace ComLinkRTProtocol
 {
@@ -64,12 +63,16 @@ namespace ComLinkRTProtocol
         _Bits bits;
         _ServiceBits fields;
         uint8_t byte;
-        
+
         ServiceBits() : byte(0) {}
         ServiceBits(uint8_t value) : byte(value) {}
-        
+
         bool operator==(const ServiceBits& other) const { return byte == other.byte; }
         bool operator==(uint8_t value) const { return byte == value; }
     };
     #pragma pack(pop)
+
+    typedef void (*PacketHandlerFn)(const PacketHeader&, const uint8_t*);
+    typedef void (*PacketProcessorFn)();
+    typedef void (*PacketInitFn)();
 }

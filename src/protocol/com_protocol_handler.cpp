@@ -1,10 +1,13 @@
 #include "com_protocol_handler.h"
-#include "com_protocol.h"
 #include <Arduino.h>
+#include <string.h>
 
 namespace ComLinkRTProtocol
 {
-    ProtocolHandler::ProtocolHandler() {}
+    ProtocolHandler::ProtocolHandler() : processorsCount(0)
+    {
+        memset(handlersTable, 0, sizeof(handlersTable));
+    }
 
     void ProtocolHandler::Begin()
     {
@@ -12,80 +15,63 @@ namespace ComLinkRTProtocol
         parser.Reset();
     }
 
-    void ProtocolHandler::AddHandler(uint8_t packetType, std::function<void(PacketHeader, uint8_t*)> handler, std::function<void()> processor, std::function<void()> initFunc)
+    void ProtocolHandler::AddHandler(uint8_t packetType, PacketHandlerFn handler, PacketProcessorFn processor, PacketInitFn initFunc)
     {
         if (initFunc != nullptr)
             initFunc();
 
-        handlersTable[packetType] = {packetType, handler, processor};
-        packetTypes.push_back(packetType);
+        handlersTable[packetType].handler = handler;
+        handlersTable[packetType].processor = processor;
+
+        if (processor != nullptr && processorsCount < (sizeof(processorsList) / sizeof(processorsList[0])))
+        {
+            processorsList[processorsCount++] = processor;
+        }
     }
 
     void ProtocolHandler::Update()
     {
-        while (Serial1.available() > 0)
+        int available = Serial1.available();
+        while (available-- > 0)
         {
-            uint8_t receivedByte = Serial1.read();
-
-            if (parser.ProcessByte(receivedByte))
-            {
-                PacketHeader header = parser.GetHeader();
-                HandlePacket(header);
-            }
+            uint8_t b = static_cast<uint8_t>(Serial1.read());
+            if (parser.ProcessByte(b))
+                HandlePacket();
         }
 
-        for (uint8_t packetType : packetTypes)
-        {
-            CommandHandler handler;
-            handler = handlersTable[packetType];
-            if (handler.processor == nullptr) continue;
-            handler.processor();
-        }
+        const uint8_t count = processorsCount;
+        for (uint8_t i = 0; i < count; i++)
+            processorsList[i]();
     }
 
-    void ProtocolHandler::HandlePacket(const PacketHeader &header)
+    void ProtocolHandler::HandlePacket()
     {
+        const PacketHeader& header = parser.GetHeader();
+
         if (header.version != PROTOCOL_VERSION)
         {
             parser.Reset();
             return;
         }
 
-        bool status = handlersTable.find(header.packetType) != handlersTable.end();
-        if (!status) 
+        PacketHandlerFn fn = handlersTable[header.packetType].handler;
+        if (fn == nullptr)
         {
             parser.Reset();
             return;
         }
 
-        CommandHandler handler = handlersTable[header.packetType];
+        const uint8_t* data = (header.dataLength > 0) ? parser.GetPayloadPtr() : nullptr;
+        fn(header, data);
 
-        uint8_t* data = nullptr;
-
-        if (header.dataLength > 0)
-        {
-            data = new uint8_t[header.dataLength];
-            if (!parser.GetPayload(data, header.dataLength))
-            {
-                delete[] data;
-                parser.Reset();
-                return;
-            }
-        }
-        
-        handler.handler(header, data);
-
-        if (data != nullptr)
-            delete[] data;
-        
         parser.Reset();
     }
-        
-    void ProtocolHandler::SendPacket(const uint8_t *data, uint16_t length, uint16_t packetId) const
+
+    void ProtocolHandler::SendPacket(const uint8_t* data, uint16_t length, uint16_t packetId) const
     {
         if (packetId == ZERO_PACKET_ID)
             return;
-        
+
         Serial1.write(data, length);
     }
 }

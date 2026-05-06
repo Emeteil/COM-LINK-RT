@@ -3,38 +3,47 @@
 
 namespace ComLinkRTProtocol
 {
+    namespace
+    {
+        struct CrcTable
+        {
+            uint16_t t[256];
+            constexpr CrcTable() : t()
+            {
+                for (int i = 0; i < 256; i++)
+                {
+                    uint16_t c = static_cast<uint16_t>(i) << 8;
+                    for (int j = 0; j < 8; j++)
+                        c = (c & 0x8000) ? static_cast<uint16_t>((c << 1) ^ 0x1021) : static_cast<uint16_t>(c << 1);
+                    t[i] = c;
+                }
+            }
+        };
+        constexpr CrcTable CRC_TBL{};
+    }
+
     ProtocolParser::ProtocolParser()
     {
         Reset();
     }
-    
-    PacketHeader ProtocolParser::GetHeader() const { return currentHeader; }
-
-    ProtocolParser::State ProtocolParser::GetState() const { return state; }
 
     void ProtocolParser::Reset()
     {
         state = State::SYNC1;
         bufferIndex = 0;
-        memset(&currentHeader, 0, sizeof(currentHeader));
-        memset(buffer, 0, sizeof(buffer));
+        expectedTotal = 0;
     }
 
-    uint16_t ProtocolParser::CalculateCRC(const uint8_t *data, uint16_t length)
+    uint16_t ProtocolParser::UpdateCRC(uint16_t crc, const uint8_t* data, uint16_t length)
     {
-        uint16_t crc = 0xFFFF;
         for (uint16_t i = 0; i < length; i++)
-        {
-            crc ^= (uint16_t)data[i] << 8;
-            for (uint8_t j = 0; j < 8; j++)
-            {
-                if (crc & 0x8000)
-                    crc = (crc << 1) ^ 0x1021;
-                else
-                    crc <<= 1;
-            }
-        }
+            crc = static_cast<uint16_t>((crc << 8) ^ CRC_TBL.t[((crc >> 8) ^ data[i]) & 0xFF]);
         return crc;
+    }
+
+    uint16_t ProtocolParser::CalculateCRC(const uint8_t* data, uint16_t length)
+    {
+        return UpdateCRC(0xFFFF, data, length);
     }
 
     bool ProtocolParser::ProcessByte(uint8_t byte)
@@ -61,37 +70,49 @@ namespace ComLinkRTProtocol
 
             case State::HEADER:
                 buffer[bufferIndex++] = byte;
-
                 if (bufferIndex >= sizeof(PacketHeader))
                 {
                     memcpy(&currentHeader, buffer, sizeof(PacketHeader));
 
-                    uint16_t receivedCRC = currentHeader.crc;
-                    uint16_t calculatedCRC = CalculateCRC(buffer, sizeof(PacketHeader) - sizeof(PacketHeader::crc));
-
-                    if (receivedCRC == calculatedCRC && currentHeader.dataLength <= sizeof(buffer) - sizeof(PacketHeader))
+                    if (currentHeader.dataLength > BUFFER_SIZE - sizeof(PacketHeader))
                     {
-                        if (currentHeader.dataLength > 0)
-                        {
-                            state = State::PAYLOAD;
-                        }
-                        else
+                        Reset();
+                        break;
+                    }
+
+                    expectedTotal = sizeof(PacketHeader) + currentHeader.dataLength;
+
+                    if (currentHeader.dataLength == 0)
+                    {
+                        uint16_t headerNoCrc = sizeof(PacketHeader) - sizeof(uint16_t);
+                        uint16_t crc = CalculateCRC(buffer, headerNoCrc);
+                        if (crc == currentHeader.crc)
                         {
                             state = State::COMPLETE;
                             return true;
                         }
+                        Reset();
                     }
-                    else Reset(); // Ошибка CRC или слишком большой пакет
+                    else
+                    {
+                        state = State::PAYLOAD;
+                    }
                 }
                 break;
 
             case State::PAYLOAD:
                 buffer[bufferIndex++] = byte;
-
-                if (bufferIndex >= sizeof(PacketHeader) + currentHeader.dataLength)
+                if (bufferIndex >= expectedTotal)
                 {
-                    state = State::COMPLETE;
-                    return true;
+                    uint16_t headerNoCrc = sizeof(PacketHeader) - sizeof(uint16_t);
+                    uint16_t crc = CalculateCRC(buffer, headerNoCrc);
+                    crc = UpdateCRC(crc, buffer + sizeof(PacketHeader), currentHeader.dataLength);
+                    if (crc == currentHeader.crc)
+                    {
+                        state = State::COMPLETE;
+                        return true;
+                    }
+                    Reset();
                 }
                 break;
 
@@ -103,43 +124,34 @@ namespace ComLinkRTProtocol
                 Reset();
                 break;
         }
-        
-        return false;
-    }
-    
-    bool ProtocolParser::GetPayload(uint8_t* data, uint16_t length)
-    {
-        if (state == State::COMPLETE && length == currentHeader.dataLength)
-        {
-            memcpy(data, buffer + sizeof(PacketHeader), length);
-            Reset();
-            return true;
-        }
+
         return false;
     }
 
-    void ProtocolParser::CreatePacket(uint8_t version, uint8_t type, uint8_t serviceBits, uint16_t packetId, uint8_t* data, uint16_t dataLength,
-                                      uint8_t *outputBuffer, uint16_t &outputLength) const
+    void ProtocolParser::CreatePacket(uint8_t version, uint8_t type, uint8_t serviceBits, uint16_t packetId,
+                                      const uint8_t* data, uint16_t dataLength,
+                                      uint8_t* outputBuffer, uint16_t& outputLength) const
     {
-        PacketHeader header;
-        header.syncByte1 = SYNC_BYTE1;
-        header.syncByte2 = SYNC_BYTE2;
-        header.version = version;
-        header.packetType = type;
-        header.serviceBits = serviceBits;
-        header.packetId = packetId;
-        header.dataLength = dataLength;
-        header.crc = 0;
-
-        header.crc = CalculateCRC(reinterpret_cast<const uint8_t *>(&header), sizeof(header) - sizeof(header.crc));
-
-        memcpy(outputBuffer, &header, sizeof(header));
-        outputLength = sizeof(header);
+        PacketHeader* header = reinterpret_cast<PacketHeader*>(outputBuffer);
+        header->syncByte1 = SYNC_BYTE1;
+        header->syncByte2 = SYNC_BYTE2;
+        header->version = version;
+        header->packetType = type;
+        header->serviceBits = serviceBits;
+        header->packetId = packetId;
+        header->dataLength = dataLength;
+        header->crc = 0;
 
         if (dataLength > 0 && data != nullptr)
-        {
-            memcpy(outputBuffer + sizeof(header), data, dataLength);
-            outputLength += dataLength;
-        }
+            memcpy(outputBuffer + sizeof(PacketHeader), data, dataLength);
+
+        uint16_t headerNoCrc = sizeof(PacketHeader) - sizeof(uint16_t);
+        uint16_t crc = CalculateCRC(outputBuffer, headerNoCrc);
+        if (dataLength > 0)
+            crc = UpdateCRC(crc, outputBuffer + sizeof(PacketHeader), dataLength);
+
+        header->crc = crc;
+
+        outputLength = sizeof(PacketHeader) + dataLength;
     }
 }

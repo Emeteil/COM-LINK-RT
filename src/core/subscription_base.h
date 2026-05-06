@@ -29,7 +29,7 @@ namespace CommandSubscription
         SubscriptionHandler(unsigned long interval, unsigned long timeout, uint8_t responseType);
         
         void ResetSubscription();
-        void HandleSubscription(ComLinkRTProtocol::PacketHeader header, uint8_t* data);
+        void HandleSubscription(const ComLinkRTProtocol::PacketHeader& header, const uint8_t* data);
         void ProcessSubscription();
         bool IsActive() const { return subscription.isActive; }
     };

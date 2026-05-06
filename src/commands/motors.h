@@ -45,5 +45,5 @@ namespace CommandMotors
     };
 
     void Init();
-    void Handler(ComLinkRTProtocol::PacketHeader header, uint8_t* data);
+    void Handler(const ComLinkRTProtocol::PacketHeader& header, const uint8_t* data);
 }

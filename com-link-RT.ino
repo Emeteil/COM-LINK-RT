@@ -59,5 +59,4 @@ void setup()
 void loop()
 {
     protocol.Update();
-    delay(LOOP_DELAY);
 }

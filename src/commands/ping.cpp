@@ -2,8 +2,11 @@
 
 namespace CommandPing
 {
-    void Handler(ComLinkRTProtocol::PacketHeader header, uint8_t* data)
+    void Handler(const ComLinkRTProtocol::PacketHeader& header, const uint8_t* data)
     {
+        if (header.packetId == ZERO_PACKET_ID)
+            return;
+
         uint8_t txBuffer[64];
         uint16_t length;
 
