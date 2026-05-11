@@ -102,7 +102,7 @@ namespace CommandDistance
         }
 
         public:
-        DistanceHandler() : SubscriptionHandler(100, SUBSCRIPTION_KEEP_ALIVE_TIMEOUT_MS, PACKET_TYPE_RESPONSE) {}
+        DistanceHandler() : SubscriptionHandler(500, SUBSCRIPTION_KEEP_ALIVE_TIMEOUT_MS, PACKET_TYPE_RESPONSE) {}
     };
 
     DistanceHandler distanceHandler;

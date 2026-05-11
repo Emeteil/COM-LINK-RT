@@ -30,7 +30,7 @@ namespace CommandMillis
         }
         
         public:
-        MillisHandler() : SubscriptionHandler(500, 10000, PACKET_TYPE_RESPONSE) {}
+        MillisHandler() : SubscriptionHandler(3000, 10000, PACKET_TYPE_RESPONSE) {}
     };
 
     MillisHandler millisHandler;
