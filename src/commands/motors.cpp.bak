@@ -1,19 +1,31 @@
 #include "motors.h"
 #include "../core/globals.h"
-#include "../core/pwm_bus.h"
 #include <Arduino.h>
 
 namespace CommandMotors
 {
     static constexpr uint8_t MOTOR_COUNT = 2;
 
-    static const uint8_t MOTOR_CHANNELS[MOTOR_COUNT] = {0, 1};
+    struct MotorPins
+    {
+        uint8_t ena;
+        uint8_t in1;
+        uint8_t in2;
+    };
+
+    static const MotorPins MOTOR_PINS[MOTOR_COUNT] = {
+        {MOTOR1_ENA_PIN, MOTOR1_IN1_PIN, MOTOR1_IN2_PIN},
+        {MOTOR2_ENA_PIN, MOTOR2_IN1_PIN, MOTOR2_IN2_PIN},
+    };
+
     static const uint8_t MOTOR_MASKS[MOTOR_COUNT] = {MOTOR1_MASK, MOTOR2_MASK};
 
-    static constexpr uint16_t PULSE_NEUTRAL = (PWM_SERVO_MIN + PWM_SERVO_MAX) / 2;
-    static constexpr uint16_t PULSE_HALF_RANGE = (PWM_SERVO_MAX - PWM_SERVO_MIN) / 2;
-
-    bool initialized;
+    static const uint8_t DIRECTION_LEVELS[4][2] = {
+        {LOW,  LOW},   // DIRECTION_STOP
+        {HIGH, LOW},   // DIRECTION_FORWARD
+        {LOW,  HIGH},  // DIRECTION_BACKWARD
+        {HIGH, HIGH},  // DIRECTION_BRAKE
+    };
 
     MotorState MotorStates[MOTOR_COUNT];
 
@@ -27,43 +39,19 @@ namespace CommandMotors
         return motorIndex < MOTOR_COUNT;
     }
 
-    static void ApplyOutput(uint8_t motorIndex)
-    {
-        if (!initialized)
-            return;
-
-        const MotorState& state = MotorStates[motorIndex];
-
-        uint16_t offset = (uint16_t)((uint32_t)state.speed * PULSE_HALF_RANGE / 255);
-
-        uint16_t pulse;
-        switch (state.direction)
-        {
-            case DIRECTION_FORWARD:
-                pulse = PULSE_NEUTRAL + offset;
-                break;
-            case DIRECTION_BACKWARD:
-                pulse = PULSE_NEUTRAL - offset;
-                break;
-            case DIRECTION_STOP:
-            case DIRECTION_BRAKE:
-            default:
-                pulse = PULSE_NEUTRAL;
-                break;
-        }
-
-        PwmBus::driver.setPWM(MOTOR_CHANNELS[motorIndex], 0, pulse);
-    }
-
     void SetMotorDirection(uint8_t motorIndex, MotorDirection direction)
     {
         if (!IsValidIndex(motorIndex) || !IsValidDirection(direction))
             return;
 
+        const MotorPins& pins = MOTOR_PINS[motorIndex];
+        const uint8_t* levels = DIRECTION_LEVELS[direction];
+
+        digitalWrite(pins.in1, levels[0]);
+        digitalWrite(pins.in2, levels[1]);
+
         MotorStates[motorIndex].direction = direction;
         MotorStates[motorIndex].isActive = (direction != DIRECTION_STOP);
-
-        ApplyOutput(motorIndex);
     }
 
     void SetMotorSpeed(uint8_t motorIndex, uint8_t speed)
@@ -71,9 +59,8 @@ namespace CommandMotors
         if (!IsValidIndex(motorIndex))
             return;
 
+        analogWrite(MOTOR_PINS[motorIndex].ena, speed);
         MotorStates[motorIndex].speed = speed;
-
-        ApplyOutput(motorIndex);
     }
 
     static inline void ApplyDirectionIfMasked(uint8_t motorMask, uint8_t motorIndex, uint8_t direction)
@@ -150,12 +137,11 @@ namespace CommandMotors
 
     void Init()
     {
-        initialized = PwmBus::Init();
-        if (!initialized)
-            return;
-
         for (uint8_t i = 0; i < MOTOR_COUNT; i++)
         {
+            pinMode(MOTOR_PINS[i].ena, OUTPUT);
+            pinMode(MOTOR_PINS[i].in1, OUTPUT);
+            pinMode(MOTOR_PINS[i].in2, OUTPUT);
             MotorStates[i].direction = DIRECTION_STOP;
             MotorStates[i].speed = 0;
             MotorStates[i].isActive = false;
@@ -165,7 +151,7 @@ namespace CommandMotors
 
     void Handler(const ComLinkRTProtocol::PacketHeader& header, const uint8_t* data)
     {
-        if (!initialized || header.dataLength != sizeof(MotorCommand))
+        if (header.dataLength != sizeof(MotorCommand))
             return;
 
         MotorCommand cmd;

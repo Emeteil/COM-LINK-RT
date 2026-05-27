@@ -1,30 +1,29 @@
 #include "servo.h"
 #include "../core/globals.h"
+#include "../core/pwm_bus.h"
 #include <Arduino.h>
-#include <Wire.h>
-#include <Adafruit_PWMServoDriver.h>
 
 namespace CommandServo
 {
-    Adafruit_PWMServoDriver pca;
-    
+    static constexpr uint8_t RESERVED_CHANNELS = 2; // Каналы 0 и 1 заняты приводами постоянного вращения (CommandMotors)
+
     ServoTask taskQueue[MAX_TASKS];
     ChannelState channelStates[MAX_CHANNELS];
     uint8_t taskCount;
     bool initialized;
-    
+
     uint16_t AngleToPulse(uint16_t angle)
     {
         return map(angle, 0, 180, SERVO_MIN, SERVO_MAX);
     }
-    
+
     void SetServoPosition(uint8_t channel, uint16_t angle)
     {
         if (!initialized || channel >= MAX_CHANNELS)
             return;
-        
+
         uint16_t pulse = AngleToPulse(angle);
-        pca.setPWM(channel, 0, pulse);
+        PwmBus::driver.setPWM(channel, 0, pulse);
         
         channelStates[channel].currentAngle = angle;
         channelStates[channel].isDefined = true;
@@ -168,20 +167,10 @@ namespace CommandServo
     
     void Init()
     {
-        Wire.setSDA(I2C1_SDA);
-        Wire.setSCL(I2C1_SCL);
-        Wire.begin();
-
-        pca = Adafruit_PWMServoDriver(PWM_SERVO_ADDRESS);
-        
-        if (!pca.begin())
-        {
-            initialized = false;
+        initialized = PwmBus::Init();
+        if (!initialized)
             return;
-        }
-        
-        pca.setPWMFreq(SERVO_FREQ);
-        
+
         for (uint8_t i = 0; i < MAX_CHANNELS; i++)
         {
             channelStates[i].currentAngle = 90;
@@ -204,8 +193,8 @@ namespace CommandServo
         
         ServoCommand cmd;
         memcpy(&cmd, data, sizeof(ServoCommand));
-        
-        if (cmd.channel >= MAX_CHANNELS || cmd.targetAngle > 180)
+
+        if (cmd.channel < RESERVED_CHANNELS || cmd.channel >= MAX_CHANNELS || cmd.targetAngle > 180)
             return;
         
         TaskPriority priority;
