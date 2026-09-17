@@ -3,10 +3,10 @@
 #include "../core/board_config.h"
 
 #define MAX_CHANNELS SERVO_MAX_CHANNELS
-#define MAX_TASKS SERVO_MAX_TASKS
-#define SERVO_MIN PWM_SERVO_MIN
-#define SERVO_MAX PWM_SERVO_MAX
-#define SERVO_FREQ PWM_SERVO_FREQ_HZ
+#define MAX_TASKS    SERVO_MAX_TASKS
+#define SERVO_MIN    PWM_SERVO_MIN
+#define SERVO_MAX    PWM_SERVO_MAX
+#define SERVO_FREQ   PWM_SERVO_FREQ_HZ
 
 #define SERVO_DISABLE_SMOOTH
 
@@ -20,7 +20,7 @@ namespace CommandServo
     {
         MODE_ABSOLUTE_POSITION = 0x01, // Абсолютная позиция
         MODE_RELATIVE_POSITION = 0x02, // Относительная позиция
-        MODE_CALIBRATION = 0x03 // Калибровка
+        MODE_CALIBRATION = 0x03        // Калибровка
     };
 
     enum TaskPriority : uint8_t
@@ -31,21 +31,21 @@ namespace CommandServo
 
     enum MovementType : uint8_t
     {
-        MOVE_IMMEDIATE = 0x01, // Резкий поворот (высший приоритет)
+        MOVE_IMMEDIATE = 0x01,  // Резкий поворот (высший приоритет)
         MOVE_SMOOTH_LOW = 0x02, // Плавный поворот (низкий приоритет)
         MOVE_SMOOTH_HIGH = 0x03 // Плавный поворот (высокий приоритет)
     };
 
-    #pragma pack(push, 1)
+#pragma pack(push, 1)
     struct ServoCommand
     {
-        uint8_t channel; // Канал сервопривода
-        uint8_t moveType; // Тип движения (MovementType)
+        uint8_t channel;      // Канал сервопривода
+        uint8_t moveType;     // Тип движения (MovementType)
         uint16_t targetAngle; // Целевой угол (0-180 градусов или относительное значение)
-        uint16_t stepDelay; // Задержка между шагами в мс (для плавного движения)
-        uint8_t mode; // Режим работы (ServoMode)
+        uint16_t stepDelay;   // Задержка между шагами в мс (для плавного движения)
+        uint8_t mode;         // Режим работы (ServoMode)
     };
-    #pragma pack(pop)
+#pragma pack(pop)
 
     struct ServoTask
     {
@@ -57,7 +57,7 @@ namespace CommandServo
         bool isActive;
         TaskPriority priority;
     };
-    
+
     struct ChannelState
     {
         uint16_t currentAngle;

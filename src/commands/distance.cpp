@@ -6,8 +6,8 @@
 namespace CommandDistance
 {
     static constexpr uint32_t MEASURE_INTERVAL_US = 50000UL;
-    static constexpr uint32_t ECHO_TIMEOUT_US     = 30000UL;
-    static constexpr uint32_t TRIG_PULSE_US       = 10UL;
+    static constexpr uint32_t ECHO_TIMEOUT_US = 30000UL;
+    static constexpr uint32_t TRIG_PULSE_US = 10UL;
 
     enum class MeasureState : uint8_t
     {
@@ -95,8 +95,7 @@ namespace CommandDistance
                 reinterpret_cast<const uint8_t*>(&cm),
                 sizeof(cm),
                 txBuffer,
-                length
-            );
+                length);
 
             protocol.SendPacket(txBuffer, length, packetId);
         }

@@ -109,16 +109,15 @@ namespace CommandMotors
             packetId,
             nullptr, 0,
             txBuffer,
-            length
-        );
+            length);
 
         protocol.SendPacket(txBuffer, length, packetId);
     }
 
     void ProcessMotorCommand(const MotorCommand& cmd)
     {
-        const uint8_t speeds[MOTOR_COUNT]      = {cmd.speed1, cmd.speed2};
-        const uint8_t directions[MOTOR_COUNT]  = {cmd.direction1, cmd.direction2};
+        const uint8_t speeds[MOTOR_COUNT] = {cmd.speed1, cmd.speed2};
+        const uint8_t directions[MOTOR_COUNT] = {cmd.direction1, cmd.direction2};
 
         switch (cmd.commandType)
         {

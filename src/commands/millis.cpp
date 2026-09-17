@@ -12,23 +12,22 @@ namespace CommandMillis
         {
             uint8_t txBuffer[64];
             uint16_t length;
-            
+
             uint32_t currentMillis = millis();
-            
+
             protocol.parser.CreatePacket(
                 PROTOCOL_VERSION,
                 packetType,
                 serviceBits,
                 packetId,
-                reinterpret_cast<uint8_t*>(&currentMillis), 
+                reinterpret_cast<uint8_t*>(&currentMillis),
                 sizeof(currentMillis),
                 txBuffer,
-                length
-            );
-            
+                length);
+
             protocol.SendPacket(txBuffer, length, packetId);
         }
-        
+
         public:
         MillisHandler() : SubscriptionHandler(3000, 10000, PACKET_TYPE_RESPONSE) {}
     };
@@ -39,7 +38,7 @@ namespace CommandMillis
     {
         millisHandler.HandleSubscription(header, data);
     }
-    
+
     void Processor()
     {
         millisHandler.ProcessSubscription();

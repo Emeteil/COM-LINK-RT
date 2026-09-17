@@ -1,17 +1,16 @@
 #include "com_protocol_handler.h"
-#include <Arduino.h>
 #include <string.h>
 
 namespace ComLinkRTProtocol
 {
-    ProtocolHandler::ProtocolHandler() : processorsCount(0)
+    ProtocolHandler::ProtocolHandler(IProtocolChannel& channel) : channel(channel), processorsCount(0)
     {
         memset(handlersTable, 0, sizeof(handlersTable));
     }
 
     void ProtocolHandler::Begin()
     {
-        Serial1.begin(READING_SPEED);
+        channel.Begin();
         parser.Reset();
     }
 
@@ -31,10 +30,10 @@ namespace ComLinkRTProtocol
 
     void ProtocolHandler::Update()
     {
-        int available = Serial1.available();
+        int available = channel.Available();
         while (available-- > 0)
         {
-            uint8_t b = static_cast<uint8_t>(Serial1.read());
+            uint8_t b = channel.Read();
             if (parser.ProcessByte(b))
                 HandlePacket();
         }
@@ -72,6 +71,6 @@ namespace ComLinkRTProtocol
         if (packetId == ZERO_PACKET_ID)
             return;
 
-        Serial1.write(data, length);
+        channel.Write(data, length);
     }
 }

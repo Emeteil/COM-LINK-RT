@@ -6,7 +6,7 @@
 #define ECHO_PIN HC_SR04_ECHO_PIN
 
 namespace CommandDistance
-{   
+{
     const uint8_t PACKET_TYPE_REQUEST = 0x05;
     const uint8_t PACKET_TYPE_RESPONSE = 0x06;
     const uint8_t PACKET_TYPE = PACKET_TYPE_REQUEST;

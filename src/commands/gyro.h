@@ -7,11 +7,11 @@ namespace CommandGyro
     const uint8_t PACKET_TYPE_REQUEST = 0x07;
     const uint8_t PACKET_TYPE_RESPONSE = 0x08;
     const uint8_t PACKET_TYPE = PACKET_TYPE_REQUEST;
-    
+
     const uint8_t GYRO_SERVICE_BITS_RAW = 0x00;
     const uint8_t GYRO_SERVICE_BITS_FILTERED = 0x01;
     const uint8_t GYRO_SERVICE_BITS_CALIBRATED = 0x02;
-    
+
     struct GyroData
     {
         int16_t accelX;

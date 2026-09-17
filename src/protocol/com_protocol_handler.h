@@ -1,4 +1,5 @@
 #pragma once
+#include "com_protocol_channel.h"
 #include "com_protocol_parser.h"
 
 namespace ComLinkRTProtocol
@@ -12,6 +13,7 @@ namespace ComLinkRTProtocol
             PacketProcessorFn processor;
         };
 
+        IProtocolChannel& channel;
         CommandSlot handlersTable[256];
         PacketProcessorFn processorsList[32];
         uint8_t processorsCount;
@@ -21,7 +23,7 @@ namespace ComLinkRTProtocol
         public:
         ProtocolParser parser;
 
-        ProtocolHandler();
+        explicit ProtocolHandler(IProtocolChannel& channel);
 
         void Begin();
         void AddHandler(uint8_t packetType, PacketHandlerFn handler, PacketProcessorFn processor, PacketInitFn initFunc);

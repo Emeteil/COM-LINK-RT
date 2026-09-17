@@ -31,8 +31,9 @@
  * 0x40 (01000000) - UNSUBSCRIBED (Подтверждение отписки)
  * 0x20 (00100000) - KEEP_ALIVE   (Поддержание подписки)
  * 0x10 (00010000) - UNSUBSCRIBE  (Запрос на отписку)
-*/
+ */
 #include "src/core/globals.h"
+#include "src/protocol/com_serial_channel.h"
 
 #include "src/commands/ping.h"
 #include "src/commands/millis.h"
@@ -41,11 +42,11 @@
 #include "src/commands/servo.h"
 #include "src/commands/motors.h"
 
-ComLinkRTProtocol::ProtocolHandler protocol;
+ComLinkRTProtocol::SerialChannel serial1Channel(Serial1, READING_SPEED);
+ComLinkRTProtocol::ProtocolHandler protocol(serial1Channel);
 
 void setup()
 {
-    protocol = ComLinkRTProtocol::ProtocolHandler();
     protocol.AddHandler(CommandPing::PACKET_TYPE, CommandPing::Handler, nullptr, nullptr);
     protocol.AddHandler(CommandMillis::PACKET_TYPE, CommandMillis::Handler, CommandMillis::Processor, nullptr);
     protocol.AddHandler(CommandDistance::PACKET_TYPE, CommandDistance::Handler, CommandDistance::Processor, CommandDistance::Init);
