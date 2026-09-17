@@ -29,26 +29,26 @@ namespace CommandSubscription
         {
             if (subscription.isActive)
                 return;
-            
+
             subscription.isActive = true;
             subscription.subscribedPacketId = header.packetId;
             subscription.subscribedPacketType = responsePacketType;
             subscription.lastKeepAliveTime = millis();
             subscription.lastSendTime = millis();
             subscription.pendingUnsubscribe = false;
-            
+
             SendResponse(responsePacketType, header.packetId, СombineHigh4Low4Bits(EMPTY_SERVICE_BITS, header.serviceBits));
             return;
         }
-        
+
         if (subscription.isActive && (header.serviceBits & SERVICE_BIT_KEEP_ALIVE))
         {
             if (header.packetId == subscription.subscribedPacketId)
                 subscription.lastKeepAliveTime = millis();
-            
+
             return;
         }
-        
+
         if (subscription.isActive && (header.serviceBits & SERVICE_BIT_UNSUBSCRIBE))
         {
             if (header.packetId == subscription.subscribedPacketId)
@@ -58,7 +58,7 @@ namespace CommandSubscription
             }
             return;
         }
-        
+
         if (!subscription.isActive && (header.serviceBits & 0xF0) == EMPTY_SERVICE_BITS)
         {
             SendResponse(responsePacketType, header.packetId, СombineHigh4Low4Bits(EMPTY_SERVICE_BITS, header.serviceBits));
@@ -70,22 +70,22 @@ namespace CommandSubscription
     {
         if (!subscription.isActive)
             return;
-        
+
         unsigned long currentTime = millis();
-        
+
         if (subscription.pendingUnsubscribe)
         {
             ResetSubscription();
             return;
         }
-        
+
         if (currentTime - subscription.lastKeepAliveTime > keepAliveTimeout)
         {
             SendResponse(responsePacketType, subscription.subscribedPacketId, SERVICE_BIT_UNSUBSCRIBED);
             ResetSubscription();
             return;
         }
-        
+
         if (!subscription.pendingUnsubscribe && currentTime - subscription.lastSendTime > sendInterval)
         {
             SendResponse(responsePacketType, subscription.subscribedPacketId, EMPTY_SERVICE_BITS);

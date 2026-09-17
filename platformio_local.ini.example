@@ -1,0 +1,5 @@
+; Скопируйте этот файл в platformio_local.ini (он в .gitignore и не попадёт в git).
+; Нужен на Windows, если путь к проекту содержит не-ASCII символы
+
+[platformio]
+build_dir = C:/pio-build/com-link-rt

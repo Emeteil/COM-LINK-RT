@@ -14,44 +14,39 @@
  * │ 1 байт │ 1 байт │ 1 байт  │  1 байт  │   1 байт    │ 2 байта  │  2 байта   │2 байта│
  * └────────┴────────┴─────────┴──────────┴─────────────┴──────────┴────────────┴───────┘
  *
- * Версия протокола: 0x01
+ * Версия протокола: 0x03
  * Заголовок: 11 байт.
  * После заголовка могут следовать данные длиной `dataLength` байт.
  *
  * Зарезервированные типы пакетов:
  * 0x01, 0x02 - Команда PING (запрос/ответ)
  * 0x03, 0x04 - Команда MILLIS (запрос/ответ) с поддержкой подписки
- * 0x05, 0x06 - Команда DISTANCE (запрос/ответ) с поддержкой подписки
- * 0x07, 0x08 - Команда GYRO (запрос/ответ) с поддержкой подписки и калибровки
- * 0x09, 0x0A - Команда SERVO (запрос/ответ)
- * 0x0B, 0x0C - Команда MOTORS (запрос/ответ)
+ * 0x05, 0x06 - Команда VERSION (запрос/ответ)
+ * 0x07, 0x08 - Команда MOTORS (запрос/ответ)
  *
  * Служебные биты (для MILLIS):
  * 0x80 (10000000) - SUBSCRIBE    (Подписаться на поток данных)
  * 0x40 (01000000) - UNSUBSCRIBED (Подтверждение отписки)
  * 0x20 (00100000) - KEEP_ALIVE   (Поддержание подписки)
  * 0x10 (00010000) - UNSUBSCRIBE  (Запрос на отписку)
-*/
+ */
 #include "src/core/globals.h"
+#include "src/protocol/com_serial_channel.h"
 
 #include "src/commands/ping.h"
 #include "src/commands/millis.h"
-#include "src/commands/distance.h"
-#include "src/commands/gyro.h"
-#include "src/commands/servo.h"
+#include "src/commands/version.h"
 #include "src/commands/motors.h"
 
-ComLinkRTProtocol::ProtocolHandler protocol;
+ComLinkRTProtocol::SerialChannel serial1Channel(Serial1, READING_SPEED);
+ComLinkRTProtocol::ProtocolHandler protocol(serial1Channel);
 
 void setup()
 {
-    protocol = ComLinkRTProtocol::ProtocolHandler();
     protocol.AddHandler(CommandPing::PACKET_TYPE, CommandPing::Handler, nullptr, nullptr);
     protocol.AddHandler(CommandMillis::PACKET_TYPE, CommandMillis::Handler, CommandMillis::Processor, nullptr);
-    protocol.AddHandler(CommandDistance::PACKET_TYPE, CommandDistance::Handler, CommandDistance::Processor, CommandDistance::Init);
-    protocol.AddHandler(CommandServo::PACKET_TYPE, CommandServo::Handler, CommandServo::Processor, CommandServo::Init);
+    protocol.AddHandler(CommandVersion::PACKET_TYPE, CommandVersion::Handler, nullptr, nullptr);
     protocol.AddHandler(CommandMotors::PACKET_TYPE, CommandMotors::Handler, nullptr, CommandMotors::Init);
-    // protocol.AddHandler(CommandGyro::PACKET_TYPE, CommandGyro::Handler, CommandGyro::Processor, CommandGyro::Init);
 
     protocol.Begin();
 }

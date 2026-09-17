@@ -17,8 +17,7 @@ namespace CommandPing
             header.packetId,
             nullptr, 0,
             txBuffer,
-            length
-        );
+            length);
 
         protocol.SendPacket(txBuffer, length, header.packetId);
     }

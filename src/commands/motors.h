@@ -4,8 +4,8 @@
 
 namespace CommandMotors
 {
-    const uint8_t PACKET_TYPE_REQUEST = 0x0B;
-    const uint8_t PACKET_TYPE_RESPONSE = 0x0C;
+    const uint8_t PACKET_TYPE_REQUEST = 0x07;
+    const uint8_t PACKET_TYPE_RESPONSE = 0x08;
     const uint8_t PACKET_TYPE = PACKET_TYPE_REQUEST;
 
     enum MotorDirection : uint8_t
@@ -25,7 +25,7 @@ namespace CommandMotors
         COMMAND_SET_DIFFERENTIAL = 0x05
     };
 
-    #pragma pack(push, 1)
+#pragma pack(push, 1)
     struct MotorCommand
     {
         MotorCommandType commandType;
@@ -35,7 +35,7 @@ namespace CommandMotors
         uint8_t speed1;     // Скорость мотора 1 (0-255)
         uint8_t speed2;     // Скорость мотора 2 (0-255)
     };
-    #pragma pack(pop)
+#pragma pack(pop)
 
     struct MotorState
     {

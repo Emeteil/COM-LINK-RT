@@ -65,7 +65,8 @@ namespace ComLinkRTProtocol
                     buffer[bufferIndex++] = byte;
                     state = State::HEADER;
                 }
-                else Reset(); // Синхронизация нарушена
+                else
+                    Reset(); // Синхронизация нарушена
                 break;
 
             case State::HEADER:
