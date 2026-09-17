@@ -4,8 +4,8 @@
 
 namespace CommandMotors
 {
-    const uint8_t PACKET_TYPE_REQUEST = 0x0B;
-    const uint8_t PACKET_TYPE_RESPONSE = 0x0C;
+    const uint8_t PACKET_TYPE_REQUEST = 0x07;
+    const uint8_t PACKET_TYPE_RESPONSE = 0x08;
     const uint8_t PACKET_TYPE = PACKET_TYPE_REQUEST;
 
     enum MotorDirection : uint8_t
