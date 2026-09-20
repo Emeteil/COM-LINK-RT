@@ -1,5 +1,6 @@
 env := "black_f407ve"
-lint_files := "$(find src -iname '*.cpp' -o -iname '*.h' | grep -v '\\.bak$'; echo com-link-RT.ino)"
+test_env := "native"
+lint_files := "$(find src test -iname '*.cpp' -o -iname '*.h' | grep -v '\\.bak$'; echo com-link-RT.ino)"
 
 # Проверка форматирования (clang-format --dry-run --Werror)
 lint:
@@ -11,6 +12,24 @@ fmt:
 
 build:
     pio run -e {{env}}
+
+# Нативные unit-тесты (GoogleTest, железо не нужно)
+test:
+    pio test -e {{test_env}}
+
+coverage: test
+
+# Только ядро протокола
+test-core:
+    pio test -e {{test_env}} -f test_core
+
+# Только команды
+test-commands:
+    pio test -e {{test_env}} -f test_commands
+
+# Один набор: just test-filter test_millis
+test-filter name:
+    pio test -e {{test_env}} -f {{name}}
 
 # Прошивка по SWD через ST-Link (OpenOCD, без STM32CubeProgrammer)
 upload:

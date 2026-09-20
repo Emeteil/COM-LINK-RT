@@ -71,6 +71,52 @@ STM32CubeProgrammer — PlatformIO сам тянет нужные инструм
 ломать линковку (`ld.exe: cannot open map file`). Скопируйте `platformio_local.ini.example`
 в `platformio_local.ini` (в .gitignore) и укажите там `build_dir` с ASCII-путём.
 
+### Тесты
+
+Unit-тесты нативные (GoogleTest), железо не нужно:
+
+```sh
+just test            # или: pio test -e native
+just test-core       # только ядро протокола
+just test-commands   # только команды
+```
+
+Тесты лежат в `test/`, в прошивку не собираются. Новый набор — новая папка `test/test_<name>/`
+с `.cpp`-файлом. `Arduino.h`, `Wire.h` и `Adafruit_PWMServoDriver` подменены заглушками
+из `test/common/arduino/` (время управляется из теста через `MockArduino::Advance()`),
+общие хелперы — в `test/common/`.
+
+#### Тест для новой команды
+
+1. Зарегистрируйте команду в `RegisterCommandsOnce()` в `test/common/commands_fixture.h`
+   (так же, как в `setup()` в `com-link-RT.ino`) и подключите её заголовок.
+2. Если у команды есть глобальное состояние — добавьте `void Reset()` в её namespace
+   и вызовите его в `CommandsFixture::SetUp()`.
+3. Создайте `test/test_commands/test_foo.cpp`:
+
+```cpp
+#include <gtest/gtest.h>
+#include "commands_fixture.h"
+
+using TestSupport::CommandsFixture;
+using TestSupport::ExpectPacket;
+using TestSupport::PacketBuilder;
+
+TEST_F(CommandsFixture, FooAnswersWithSameId)
+{
+    Exchange(PacketBuilder(CommandFoo::PACKET_TYPE, 0x0042).Payload({0x01, 0x02}));
+
+    ASSERT_EQ(SentCount(), 1u);
+    ExpectPacket(LastSent(), CommandFoo::PACKET_TYPE_RESPONSE, 0x0042);
+    EXPECT_EQ(LastSent().payload.size(), 2u);
+}
+```
+
+Полезно знать: `Exchange(пакет)` отправляет пакет и обрабатывает его, `Tick(мс)` двигает время
+и вызывает процессоры (подписки), `PacketBuilder` умеет `.ServiceBits()`, `.BreakCrc()`,
+`.Version()`, `.DeclaredLength()`, а вызовы `pinMode`/`digitalWrite`/`setPWM` можно проверить
+через `MockArduino::LastDigitalWrite(pin)` и `MockPwm::ChannelOff(канал)`.
+
 ### Стиль кода
 
 Стиль (Allman-скобки, 4 пробела, PascalCase для функций и т.д.) описан в `.clang-format`
@@ -84,7 +130,9 @@ clang-format --dry-run --Werror src/**/*.cpp src/**/*.h com-link-RT.ino
 
 ### CI
 
-`.github/workflows/build.yml`:
-- `lint` — проверяет форматирование через `clang-format --dry-run --Werror` (блокирующая проверка);
-- `build` — собирает прошивку на каждый push/PR и публикует `firmware.bin`/`firmware.elf`
-  как артефакт GitHub Actions.
+На каждый push/PR:
+- `lint` (`.github/workflows/lint.yml`) — проверяет форматирование через
+  `clang-format --dry-run --Werror` (блокирующая проверка);
+- `build` (`.github/workflows/build.yml`) — собирает прошивку и публикует `firmware.bin`/`firmware.elf`
+  как артефакт GitHub Actions;
+- `native-tests` (`.github/workflows/test.yml`) — прогоняет `pio test -e native`.

@@ -9,4 +9,5 @@ namespace CommandMillis
 
     void Handler(const ComLinkRTProtocol::PacketHeader& header, const uint8_t* data);
     void Processor();
+    void Reset();
 }

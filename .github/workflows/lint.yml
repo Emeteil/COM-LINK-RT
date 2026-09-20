@@ -17,5 +17,5 @@ jobs:
 
       - name: clang-format
         run: |
-          FILES=$(find src -iname "*.cpp" -o -iname "*.h" | grep -v '\.bak$'; echo com-link-RT.ino)
+          FILES=$(find src test -iname "*.cpp" -o -iname "*.h" | grep -v '\.bak$'; echo com-link-RT.ino)
           clang-format --dry-run --Werror $FILES

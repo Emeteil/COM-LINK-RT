@@ -43,4 +43,9 @@ namespace CommandMillis
     {
         millisHandler.ProcessSubscription();
     }
+
+    void Reset()
+    {
+        millisHandler.ResetSubscription();
+    }
 }
