@@ -8,10 +8,13 @@ namespace CommandVersion
         if (header.packetId == ZERO_PACKET_ID)
             return;
 
+        static_assert(sizeof(VersionInfo::buildDate) == sizeof(__DATE__), "buildDate size must match __DATE__");
+        static_assert(sizeof(VersionInfo::buildTime) == sizeof(__TIME__), "buildTime size must match __TIME__");
+
         VersionInfo info;
         memset(&info, 0, sizeof(info));
-        strncpy(info.buildDate, __DATE__, sizeof(info.buildDate) - 1);
-        strncpy(info.buildTime, __TIME__, sizeof(info.buildTime) - 1);
+        memcpy(info.buildDate, __DATE__, sizeof(info.buildDate));
+        memcpy(info.buildTime, __TIME__, sizeof(info.buildTime));
 
         uint8_t txBuffer[64];
         uint16_t length;

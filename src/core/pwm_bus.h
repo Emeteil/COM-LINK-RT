@@ -8,4 +8,5 @@ namespace PwmBus
 
     bool Init();
     bool IsReady();
+    void Reset();
 }

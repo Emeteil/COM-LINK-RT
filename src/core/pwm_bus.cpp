@@ -29,4 +29,9 @@ namespace PwmBus
     {
         return initialized;
     }
+
+    void Reset()
+    {
+        initialized = false;
+    }
 }

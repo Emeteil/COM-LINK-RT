@@ -162,6 +162,18 @@ namespace CommandMotors
         StopAllMotors();
     }
 
+    void Reset()
+    {
+        initialized = false;
+
+        for (uint8_t i = 0; i < MOTOR_COUNT; i++)
+        {
+            MotorStates[i].direction = DIRECTION_STOP;
+            MotorStates[i].speed = 0;
+            MotorStates[i].isActive = false;
+        }
+    }
+
     void Handler(const ComLinkRTProtocol::PacketHeader& header, const uint8_t* data)
     {
         if (!initialized || header.dataLength != sizeof(MotorCommand))
