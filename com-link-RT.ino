@@ -39,8 +39,8 @@
 #include "src/commands/version.h"
 #include "src/commands/motors.h"
 
-ComLinkRTProtocol::SerialChannel serial1Channel(Serial1, READING_SPEED);
-ComLinkRTProtocol::ProtocolHandler protocol(serial1Channel);
+ComLinkRTProtocol::SerialChannel<decltype(SerialUSB)> serialChannel(SerialUSB, READING_SPEED);
+ComLinkRTProtocol::ProtocolHandler protocol(serialChannel);
 
 void setup()
 {
