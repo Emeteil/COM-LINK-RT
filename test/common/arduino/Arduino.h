@@ -117,8 +117,17 @@ inline void yield() {}
 inline void interrupts() {}
 inline void noInterrupts() {}
 inline uint16_t digitalPinToInterrupt(uint16_t pin) { return pin; }
-inline void attachInterrupt(uint16_t, void (*)(), int) {}
-inline void detachInterrupt(uint16_t) {}
+inline void attachInterrupt(uint16_t pin, void (*callback)(), int mode)
+{
+    MockArduino::Get().interrupts[pin] = callback;
+    MockArduino::Get().interruptModes[pin] = mode;
+}
+
+inline void detachInterrupt(uint16_t pin)
+{
+    MockArduino::Get().interrupts.erase(pin);
+    MockArduino::Get().interruptModes.erase(pin);
+}
 inline void tone(uint16_t, unsigned int, unsigned long = 0) {}
 inline void noTone(uint16_t) {}
 inline unsigned long pulseIn(uint16_t, uint8_t, unsigned long = 1000000UL) { return 0; }

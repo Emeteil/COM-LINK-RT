@@ -23,8 +23,9 @@
  * 0x03, 0x04 - Команда MILLIS (запрос/ответ) с поддержкой подписки
  * 0x05, 0x06 - Команда VERSION (запрос/ответ)
  * 0x07, 0x08 - Команда MOTORS (запрос/ответ)
+ * 0x09, 0x0A - Команда DISTANCE (запрос/ответ) с поддержкой подписки, 8 x HC-SR04
  *
- * Служебные биты (для MILLIS):
+ * Служебные биты (для MILLIS и DISTANCE):
  * 0x80 (10000000) - SUBSCRIBE    (Подписаться на поток данных)
  * 0x40 (01000000) - UNSUBSCRIBED (Подтверждение отписки)
  * 0x20 (00100000) - KEEP_ALIVE   (Поддержание подписки)
@@ -38,6 +39,7 @@
 #include "src/commands/millis.h"
 #include "src/commands/version.h"
 #include "src/commands/motors.h"
+#include "src/commands/distance.h"
 
 ComLinkRTProtocol::SerialChannel<decltype(SerialUSB)> serialChannel(SerialUSB, READING_SPEED);
 ComLinkRTProtocol::ProtocolHandler protocol(serialChannel);
@@ -48,6 +50,7 @@ void setup()
     protocol.AddHandler(CommandMillis::PACKET_TYPE, CommandMillis::Handler, CommandMillis::Processor, nullptr);
     protocol.AddHandler(CommandVersion::PACKET_TYPE, CommandVersion::Handler, nullptr, nullptr);
     protocol.AddHandler(CommandMotors::PACKET_TYPE, CommandMotors::Handler, nullptr, CommandMotors::Init);
+    protocol.AddHandler(CommandDistance::PACKET_TYPE, CommandDistance::Handler, CommandDistance::Processor, CommandDistance::Init);
 
     protocol.Begin();
 }

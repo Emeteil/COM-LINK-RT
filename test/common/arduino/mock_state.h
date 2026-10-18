@@ -30,6 +30,8 @@ namespace MockArduino
         std::vector<PinEvent> digitalWrites;
         std::vector<PinEvent> analogWrites;
         std::map<uint16_t, int> pinValues;
+        std::map<uint16_t, void (*)()> interrupts;
+        std::map<uint16_t, int> interruptModes;
     };
 
     inline State& Get()
@@ -46,6 +48,8 @@ namespace MockArduino
         state.digitalWrites.clear();
         state.analogWrites.clear();
         state.pinValues.clear();
+        state.interrupts.clear();
+        state.interruptModes.clear();
 
         for (void (*hook)() : ResetHooks())
             hook();
@@ -86,6 +90,14 @@ namespace MockArduino
         std::map<uint16_t, int>& values = Get().pinValues;
         std::map<uint16_t, int>::const_iterator it = values.find(pin);
         return (it == values.end()) ? 0 : it->second;
+    }
+
+    inline void DriveInterruptPin(uint16_t pin, int value)
+    {
+        SetPinValue(pin, value);
+        std::map<uint16_t, void (*)()>::const_iterator it = Get().interrupts.find(pin);
+        if (it != Get().interrupts.end() && it->second != nullptr)
+            it->second();
     }
 
     inline int LastWrite(const std::vector<PinEvent>& log, uint16_t pin)

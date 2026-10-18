@@ -29,6 +29,32 @@
 | 0x06 | VERSION - ответ      |
 | 0x07 | MOTORS - запрос      |
 | 0x08 | MOTORS - ответ       |
+| 0x09 | DISTANCE - запрос    |
+| 0x0A | DISTANCE - ответ     |
+
+### MOTORS
+
+Два мотора через H-мост (L298N): `EN` — ШИМ скорости (PE10, PE13), `IN1`/`IN2` — направление
+(PE11/PE12, PE14/PE15). Payload запроса — 6 байт `MotorCommand` (`motors.h`), ответ пустой.
+
+### DISTANCE
+
+8 датчиков HC-SR04 через два CD74HC4067 (TRIG — PC1, ECHO — PC2, адрес S0–S2 — PD12–PD14).
+Датчики опрашиваются по очереди 0, 4, 1, 5, 2, 6, 3, 7 фиксированными слотами по 31 мс
+(круг 248 мс), без блокировок: фронты эха ловятся прерыванием, длительность считается
+по счётчику тактов ядра (DWT), основной цикл только переключает слоты.
+
+Ответ — `8 × uint16` little-endian, миллиметры, индекс = номер датчика (канал `Cn`):
+
+| Значение | Смысл                                         |
+|----------|-----------------------------------------------|
+| `1…65534`| расстояние в мм                               |
+| `0`      | эхо не вернулось в пределах дальности (~4 м)  |
+| `65535`  | датчик не ответил или ещё не измерялся        |
+
+Одиночный запрос возвращает последние значения. С подпиской (`SUBSCRIBE`) значения
+приходят раз в 250 мс (~4 Гц), каждый пакет — самые свежие замеры всех датчиков.
+Скорость звука задана для 20 °C (`ULTRASONIC_SOUND_SPEED_MM_S` в `board_config.h`).
 
 ## Служебные биты (для подписок)
 
@@ -82,7 +108,7 @@ just test-commands   # только команды
 ```
 
 Тесты лежат в `test/`, в прошивку не собираются. Новый набор — новая папка `test/test_<name>/`
-с `.cpp`-файлом. `Arduino.h`, `Wire.h` и `Adafruit_PWMServoDriver` подменены заглушками
+с `.cpp`-файлом. `Arduino.h` и `Wire.h` подменены заглушками
 из `test/common/arduino/` (время управляется из теста через `MockArduino::Advance()`),
 общие хелперы — в `test/common/`.
 
@@ -114,8 +140,9 @@ TEST_F(CommandsFixture, FooAnswersWithSameId)
 
 Полезно знать: `Exchange(пакет)` отправляет пакет и обрабатывает его, `Tick(мс)` двигает время
 и вызывает процессоры (подписки), `PacketBuilder` умеет `.ServiceBits()`, `.BreakCrc()`,
-`.Version()`, `.DeclaredLength()`, а вызовы `pinMode`/`digitalWrite`/`setPWM` можно проверить
-через `MockArduino::LastDigitalWrite(pin)` и `MockPwm::ChannelOff(канал)`.
+`.Version()`, `.DeclaredLength()`, а вызовы `pinMode`/`digitalWrite`/`analogWrite` можно проверить
+через `MockArduino::LastDigitalWrite(pin)` и `MockArduino::LastAnalogWrite(pin)`.
+`MockArduino::DriveInterruptPin(pin, уровень)` выставляет уровень и вызывает обработчик из `attachInterrupt`.
 
 ### Стиль кода
 

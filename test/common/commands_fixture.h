@@ -1,10 +1,10 @@
 #pragma once
+#include <Arduino.h>
+#include "../../src/commands/distance.h"
 #include "../../src/commands/millis.h"
 #include "../../src/commands/motors.h"
 #include "../../src/commands/ping.h"
 #include "../../src/commands/version.h"
-#include "../../src/core/pwm_bus.h"
-#include "arduino/Adafruit_PWMServoDriver.h"
 #include "protocol_fixture.h"
 
 namespace TestSupport
@@ -21,6 +21,7 @@ namespace TestSupport
         protocol.AddHandler(CommandMillis::PACKET_TYPE, CommandMillis::Handler, CommandMillis::Processor, nullptr);
         protocol.AddHandler(CommandVersion::PACKET_TYPE, CommandVersion::Handler, nullptr, nullptr);
         protocol.AddHandler(CommandMotors::PACKET_TYPE, CommandMotors::Handler, nullptr, nullptr);
+        protocol.AddHandler(CommandDistance::PACKET_TYPE, CommandDistance::Handler, CommandDistance::Processor, nullptr);
     }
 
     class CommandsFixture : public ProtocolFixture
@@ -31,22 +32,23 @@ namespace TestSupport
             ProtocolFixture::SetUp();
             RegisterCommandsOnce();
             CommandMillis::Reset();
+            CommandDistance::Init();
             InitMotors();
-            ClearPwmLog();
+            ClearPinLog();
             channel.Clear();
         }
 
         void InitMotors()
         {
-            PwmBus::Reset();
             CommandMotors::Reset();
             CommandMotors::Init();
         }
 
-        void ClearPwmLog()
+        void ClearPinLog()
         {
-            MockPwm::Get().calls.clear();
-            MockPwm::Get().channels.clear();
+            MockArduino::Get().pinModes.clear();
+            MockArduino::Get().digitalWrites.clear();
+            MockArduino::Get().analogWrites.clear();
         }
     };
 }
