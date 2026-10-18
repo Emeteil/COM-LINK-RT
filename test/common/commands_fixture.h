@@ -1,6 +1,8 @@
 #pragma once
 #include <Arduino.h>
 #include "../../src/commands/distance.h"
+#include "../../src/commands/gps.h"
+#include "../../src/commands/magnetometer.h"
 #include "../../src/commands/millis.h"
 #include "../../src/commands/motors.h"
 #include "../../src/commands/ping.h"
@@ -22,6 +24,8 @@ namespace TestSupport
         protocol.AddHandler(CommandVersion::PACKET_TYPE, CommandVersion::Handler, nullptr, nullptr);
         protocol.AddHandler(CommandMotors::PACKET_TYPE, CommandMotors::Handler, nullptr, nullptr);
         protocol.AddHandler(CommandDistance::PACKET_TYPE, CommandDistance::Handler, CommandDistance::Processor, nullptr);
+        protocol.AddHandler(CommandMagnetometer::PACKET_TYPE, CommandMagnetometer::Handler, CommandMagnetometer::Processor, nullptr);
+        protocol.AddHandler(CommandGps::PACKET_TYPE, CommandGps::Handler, CommandGps::Processor, nullptr);
     }
 
     class CommandsFixture : public ProtocolFixture
@@ -33,6 +37,8 @@ namespace TestSupport
             RegisterCommandsOnce();
             CommandMillis::Reset();
             CommandDistance::Init();
+            CommandMagnetometer::Init();
+            CommandGps::Init();
             InitMotors();
             ClearPinLog();
             channel.Clear();

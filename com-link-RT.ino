@@ -24,6 +24,8 @@
  * 0x05, 0x06 - Команда VERSION (запрос/ответ)
  * 0x07, 0x08 - Команда MOTORS (запрос/ответ)
  * 0x09, 0x0A - Команда DISTANCE (запрос/ответ) с поддержкой подписки, 8 x HC-SR04
+ * 0x0B, 0x0C - Команда MAGNETOMETER (запрос/ответ) с поддержкой подписки, QMC5883P
+ * 0x0D, 0x0E - Команда GPS (запрос/ответ), NEO-6M
  *
  * Служебные биты (для MILLIS и DISTANCE):
  * 0x80 (10000000) - SUBSCRIBE    (Подписаться на поток данных)
@@ -40,6 +42,8 @@
 #include "src/commands/version.h"
 #include "src/commands/motors.h"
 #include "src/commands/distance.h"
+#include "src/commands/magnetometer.h"
+#include "src/commands/gps.h"
 
 ComLinkRTProtocol::SerialChannel<decltype(SerialUSB)> serialChannel(SerialUSB, READING_SPEED);
 ComLinkRTProtocol::ProtocolHandler protocol(serialChannel);
@@ -51,6 +55,8 @@ void setup()
     protocol.AddHandler(CommandVersion::PACKET_TYPE, CommandVersion::Handler, nullptr, nullptr);
     protocol.AddHandler(CommandMotors::PACKET_TYPE, CommandMotors::Handler, nullptr, CommandMotors::Init);
     protocol.AddHandler(CommandDistance::PACKET_TYPE, CommandDistance::Handler, CommandDistance::Processor, CommandDistance::Init);
+    protocol.AddHandler(CommandMagnetometer::PACKET_TYPE, CommandMagnetometer::Handler, CommandMagnetometer::Processor, CommandMagnetometer::Init);
+    protocol.AddHandler(CommandGps::PACKET_TYPE, CommandGps::Handler, CommandGps::Processor, CommandGps::Init);
 
     protocol.Begin();
 }

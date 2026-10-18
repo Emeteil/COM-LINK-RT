@@ -75,6 +75,8 @@ namespace arduino
 
         HardwareSerial() : baudRate(0), started(false) { SerialRegistry().push_back(this); }
 
+        HardwareSerial(uint32_t, uint32_t) : HardwareSerial() {}
+
         void begin(unsigned long baud)
         {
             baudRate = baud;
@@ -144,6 +146,7 @@ namespace arduino
 }
 
 using arduino::HardwareSerial;
+using Uart = arduino::HardwareSerial;
 using arduino::Print;
 using arduino::Serial;
 using arduino::Serial1;
