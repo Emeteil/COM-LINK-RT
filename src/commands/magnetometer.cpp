@@ -22,29 +22,52 @@ namespace CommandMagnetometer
     static constexpr uint8_t STATUS_BIT_OVERFLOW = 0x02;
     static constexpr uint8_t MAX_ERRORS = 3;
 
+    static const uint8_t ADDRESSES[] = {MAGNETOMETER_I2C_ADDRESS, MAGNETOMETER_I2C_ADDRESS_ALT};
+
     static MagnetometerData current;
+    static uint8_t address = MAGNETOMETER_I2C_ADDRESS;
     static bool busStarted = false;
     static bool present = false;
     static uint8_t errorCount = 0;
     static unsigned long lastProbeMs = 0;
     static unsigned long lastReadMs = 0;
 
+    static bool StartBus();
+
+    static void StopBus()
+    {
+        if (!busStarted)
+            return;
+        Wire.end();
+        busStarted = false;
+    }
+
+    static bool Failed()
+    {
+        StopBus();
+        return false;
+    }
+
     static bool WriteRegister(uint8_t reg, uint8_t value)
     {
-        Wire.beginTransmission(MAGNETOMETER_I2C_ADDRESS);
+        if (!StartBus())
+            return false;
+        Wire.beginTransmission(address);
         Wire.write(reg);
         Wire.write(value);
-        return Wire.endTransmission() == 0;
+        return Wire.endTransmission() == 0 || Failed();
     }
 
     static bool ReadRegisters(uint8_t reg, uint8_t* out, uint8_t count)
     {
-        Wire.beginTransmission(MAGNETOMETER_I2C_ADDRESS);
+        if (!StartBus())
+            return false;
+        Wire.beginTransmission(address);
         Wire.write(reg);
-        if (Wire.endTransmission(false) != 0)
-            return false;
-        if (Wire.requestFrom(static_cast<uint8_t>(MAGNETOMETER_I2C_ADDRESS), count) != count)
-            return false;
+        if (Wire.endTransmission() != 0)
+            return Failed();
+        if (Wire.requestFrom(address, count) != count)
+            return Failed();
         for (uint8_t i = 0; i < count; i++)
             out[i] = static_cast<uint8_t>(Wire.read());
         return true;
@@ -81,8 +104,14 @@ namespace CommandMagnetometer
             return;
         }
 
-        uint8_t chipId = 0;
-        if (!ReadRegisters(REG_CHIP_ID, &chipId, 1) || chipId != CHIP_ID)
+        bool found = false;
+        for (uint8_t i = 0; i < sizeof(ADDRESSES) && !found; i++)
+        {
+            address = ADDRESSES[i];
+            uint8_t chipId = 0;
+            found = ReadRegisters(REG_CHIP_ID, &chipId, 1) && chipId == CHIP_ID;
+        }
+        if (!found)
         {
             current.status = STATUS_NOT_FOUND;
             return;
@@ -106,7 +135,8 @@ namespace CommandMagnetometer
         if (++errorCount < MAX_ERRORS)
             return;
         present = false;
-        current.status = BusIdle() ? STATUS_NOT_FOUND : STATUS_BUS_STUCK;
+        lastProbeMs = millis();
+        current.status = STATUS_NOT_FOUND;
     }
 
     static void ReadSample()

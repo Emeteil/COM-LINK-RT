@@ -145,6 +145,16 @@ TEST_F(GpsTest, NoFixKeepsModuleAliveButPositionInvalid)
     EXPECT_EQ(info.fixAgeMs, CommandGps::AGE_NEVER);
 }
 
+TEST_F(GpsTest, ReceiverDefaultDateBeforeSyncIsNotTrusted)
+{
+    Send(Sentence("GPRMC,000232.02,V,,,,,,,060180,,,N"));
+    GpsInfo info = Request();
+
+    EXPECT_EQ(info.flags & CommandGps::FLAG_DATE_VALID, 0);
+    EXPECT_EQ(info.flags & CommandGps::FLAG_TIME_VALID, 0);
+    EXPECT_EQ(info.flags & CommandGps::FLAG_ALIVE, CommandGps::FLAG_ALIVE);
+}
+
 TEST_F(GpsTest, BadChecksumIsCountedAndIgnored)
 {
     std::string broken = Sentence(RMC);

@@ -6,6 +6,7 @@ namespace Nmea
     static constexpr uint8_t MAX_SATELLITES = 16;
     static constexpr uint8_t MAX_SENTENCE = 96;
     static constexpr uint8_t MAX_FIELDS = 24;
+    static constexpr uint32_t RECEIVER_DEFAULT_DATE = 60180;
 
     struct Satellite
     {

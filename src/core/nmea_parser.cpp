@@ -232,6 +232,8 @@ namespace Nmea
 
         uint32_t date = 0;
         state.dateValid = strlen(fields[9]) == 6 && ParseUnsigned(fields[9], date);
+        if (state.dateValid && date == RECEIVER_DEFAULT_DATE)
+            state.dateValid = state.timeValid = false;
         if (state.dateValid)
         {
             state.day = static_cast<uint8_t>(date / 10000);

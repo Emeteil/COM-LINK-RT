@@ -82,6 +82,39 @@ TEST_F(MagnetometerTest, ReadsFieldWhenDataReady)
     EXPECT_EQ(data.status, CommandMagnetometer::STATUS_OK);
 }
 
+TEST_F(MagnetometerTest, NeverUsesRepeatedStart)
+{
+    PlugSensor();
+    CommandMagnetometer::Init();
+    SetSample(1, 2, 3, 0x01);
+    Run(100);
+
+    ASSERT_FALSE(MockWire::Get().transmissions.empty());
+    for (const MockWire::Transmission& tx : MockWire::Get().transmissions)
+        EXPECT_TRUE(tx.stop);
+}
+
+TEST_F(MagnetometerTest, RestartsBusAfterErrorAndKeepsReading)
+{
+    PlugSensor();
+    CommandMagnetometer::Init();
+    SetSample(1, 2, 3, 0x01);
+    Run(25);
+
+    MockWire::RemoveDevice(ADDR);
+    Run(21);
+    EXPECT_FALSE(MockWire::Get().begun);
+
+    PlugSensor();
+    SetSample(4, 5, 6, 0x01);
+    Run(25);
+
+    MagnetometerData data = Request();
+    EXPECT_TRUE(MockWire::Get().begun);
+    EXPECT_EQ(data.status, CommandMagnetometer::STATUS_OK);
+    EXPECT_EQ(data.x, 4);
+}
+
 TEST_F(MagnetometerTest, WaitsForDataReadyBit)
 {
     PlugSensor();
@@ -129,6 +162,22 @@ TEST_F(MagnetometerTest, MissingSensorIsFoundOnLaterProbe)
     MagnetometerData data = Request();
     EXPECT_EQ(data.status, CommandMagnetometer::STATUS_OK);
     EXPECT_EQ(data.z, 7);
+}
+
+TEST_F(MagnetometerTest, FindsSensorOnAlternativeAddress)
+{
+    ReleaseBus();
+    MockWire::AddDevice(MAGNETOMETER_I2C_ADDRESS_ALT);
+    MockWire::SetRegister(MAGNETOMETER_I2C_ADDRESS_ALT, 0x00, 0x80);
+    MockWire::SetRegister(MAGNETOMETER_I2C_ADDRESS_ALT, 0x01, 0x2A);
+    MockWire::SetRegister(MAGNETOMETER_I2C_ADDRESS_ALT, 0x09, 0x01);
+    CommandMagnetometer::Init();
+    Run(25);
+
+    MagnetometerData data = Request();
+    EXPECT_EQ(data.status, CommandMagnetometer::STATUS_OK);
+    EXPECT_EQ(data.x, 0x2A);
+    EXPECT_EQ(MockWire::Register(MAGNETOMETER_I2C_ADDRESS_ALT, 0x0A), 0xC5);
 }
 
 TEST_F(MagnetometerTest, WrongChipIdIsNotAccepted)

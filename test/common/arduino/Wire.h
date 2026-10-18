@@ -13,6 +13,7 @@ namespace MockWire
         uint8_t address;
         std::vector<uint8_t> data;
         bool completed;
+        bool stop;
     };
 
     struct Device
@@ -73,7 +74,7 @@ class TwoWire
     void setSCL(uint16_t pin) { MockWire::Get().scl = pin; }
     void setClock(uint32_t hz) { MockWire::Get().clockHz = hz; }
 
-    void beginTransmission(uint8_t address) { MockWire::Get().transmissions.push_back({address, {}, false}); }
+    void beginTransmission(uint8_t address) { MockWire::Get().transmissions.push_back({address, {}, false, true}); }
 
     size_t write(uint8_t byte)
     {
@@ -89,7 +90,7 @@ class TwoWire
         return size;
     }
 
-    uint8_t endTransmission(bool = true)
+    uint8_t endTransmission(bool sendStop = true)
     {
         MockWire::State& state = MockWire::Get();
         if (state.transmissions.empty())
@@ -97,6 +98,7 @@ class TwoWire
 
         MockWire::Transmission& tx = state.transmissions.back();
         tx.completed = true;
+        tx.stop = sendStop;
 
         std::map<uint8_t, MockWire::Device>::iterator it = state.devices.find(tx.address);
         if (it == state.devices.end())
