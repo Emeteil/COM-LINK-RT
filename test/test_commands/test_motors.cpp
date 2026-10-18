@@ -1,28 +1,24 @@
 #include <gtest/gtest.h>
 #include "commands_fixture.h"
 
+using MockArduino::DigitalWriteCount;
+using MockArduino::LastAnalogWrite;
+using MockArduino::LastDigitalWrite;
 using TestSupport::CommandsFixture;
 using TestSupport::ExpectPacket;
 using TestSupport::PacketBuilder;
 
 namespace
 {
-    const uint8_t CHANNEL_MOTOR1 = 0;
-    const uint8_t CHANNEL_MOTOR2 = 1;
-
-    const uint16_t PULSE_NEUTRAL = (PWM_SERVO_MIN + PWM_SERVO_MAX) / 2;
-    const uint16_t PULSE_HALF_RANGE = (PWM_SERVO_MAX - PWM_SERVO_MIN) / 2;
-
-    uint16_t ExpectedPulse(uint8_t direction, uint8_t speed)
+    struct Pins
     {
-        uint16_t offset = static_cast<uint16_t>(static_cast<uint32_t>(speed) * PULSE_HALF_RANGE / 255);
+        uint16_t ena;
+        uint16_t in1;
+        uint16_t in2;
+    };
 
-        if (direction == CommandMotors::DIRECTION_FORWARD)
-            return PULSE_NEUTRAL + offset;
-        if (direction == CommandMotors::DIRECTION_BACKWARD)
-            return PULSE_NEUTRAL - offset;
-        return PULSE_NEUTRAL;
-    }
+    const Pins MOTOR1 = {MOTOR1_ENA_PIN, MOTOR1_IN1_PIN, MOTOR1_IN2_PIN};
+    const Pins MOTOR2 = {MOTOR2_ENA_PIN, MOTOR2_IN1_PIN, MOTOR2_IN2_PIN};
 
     CommandMotors::MotorCommand MakeCommand(uint8_t commandType, uint8_t motorMask,
                                             uint8_t direction1, uint8_t direction2,
@@ -45,19 +41,36 @@ namespace
         {
             Exchange(PacketBuilder(CommandMotors::PACKET_TYPE, packetId).PayloadOf(command));
         }
+
+        void ExpectDirection(const Pins& pins, int in1, int in2)
+        {
+            EXPECT_EQ(LastDigitalWrite(pins.in1), in1);
+            EXPECT_EQ(LastDigitalWrite(pins.in2), in2);
+        }
+
+        size_t MotorWrites(const Pins& pins)
+        {
+            return DigitalWriteCount(pins.in1) + DigitalWriteCount(pins.in2) +
+                   (LastAnalogWrite(pins.ena) == -1 ? 0 : 1);
+        }
     };
 }
 
-TEST_F(MotorsTest, InitialisesPwmDriverAndStopsMotors)
+TEST_F(MotorsTest, InitConfiguresBridgePinsAndStopsMotors)
 {
-    ClearPwmLog();
+    ClearPinLog();
     InitMotors();
 
-    EXPECT_TRUE(MockPwm::Get().begun);
-    EXPECT_EQ(MockPwm::Get().address, PWM_SERVO_ADDRESS);
-    EXPECT_FLOAT_EQ(MockPwm::Get().frequencyHz, PWM_SERVO_FREQ_HZ);
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR1), PULSE_NEUTRAL);
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR2), PULSE_NEUTRAL);
+    for (const Pins& pins : {MOTOR1, MOTOR2})
+    {
+        int outputs = 0;
+        for (const MockArduino::PinEvent& event : MockArduino::Get().pinModes)
+            if ((event.pin == pins.ena || event.pin == pins.in1 || event.pin == pins.in2) && event.value == OUTPUT)
+                outputs++;
+        EXPECT_EQ(outputs, 3);
+        ExpectDirection(pins, LOW, LOW);
+        EXPECT_EQ(LastAnalogWrite(pins.ena), 0);
+    }
 }
 
 TEST_F(MotorsTest, AnswersWithResponsePacketType)
@@ -69,22 +82,25 @@ TEST_F(MotorsTest, AnswersWithResponsePacketType)
     EXPECT_EQ(LastSent().header.dataLength, 0u);
 }
 
-TEST_F(MotorsTest, SetBothDrivesBothChannels)
+TEST_F(MotorsTest, SetBothDrivesBothBridges)
 {
     SendCommand(MakeCommand(CommandMotors::COMMAND_SET_BOTH, 0x03,
                             CommandMotors::DIRECTION_FORWARD, CommandMotors::DIRECTION_BACKWARD,
                             255, 128));
 
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR1), ExpectedPulse(CommandMotors::DIRECTION_FORWARD, 255));
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR2), ExpectedPulse(CommandMotors::DIRECTION_BACKWARD, 128));
+    ExpectDirection(MOTOR1, HIGH, LOW);
+    ExpectDirection(MOTOR2, LOW, HIGH);
+    EXPECT_EQ(LastAnalogWrite(MOTOR1.ena), 255);
+    EXPECT_EQ(LastAnalogWrite(MOTOR2.ena), 128);
 }
 
-TEST_F(MotorsTest, FullForwardReachesMaximumPulse)
+TEST_F(MotorsTest, BrakeShortsBothInputsHigh)
 {
-    SendCommand(MakeCommand(CommandMotors::COMMAND_SET_BOTH, MOTOR1_MASK,
-                            CommandMotors::DIRECTION_FORWARD, 0, 255, 0));
+    SendCommand(MakeCommand(CommandMotors::COMMAND_SET_DIRECTION, 0x03,
+                            CommandMotors::DIRECTION_BRAKE, CommandMotors::DIRECTION_STOP, 0, 0));
 
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR1), PWM_SERVO_MAX);
+    ExpectDirection(MOTOR1, HIGH, HIGH);
+    ExpectDirection(MOTOR2, LOW, LOW);
 }
 
 TEST_F(MotorsTest, MaskLimitsCommandToSelectedMotor)
@@ -93,8 +109,9 @@ TEST_F(MotorsTest, MaskLimitsCommandToSelectedMotor)
                             CommandMotors::DIRECTION_FORWARD, CommandMotors::DIRECTION_FORWARD,
                             200, 200));
 
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR1), ExpectedPulse(CommandMotors::DIRECTION_FORWARD, 200));
-    EXPECT_FALSE(MockPwm::HasChannel(CHANNEL_MOTOR2));
+    ExpectDirection(MOTOR1, HIGH, LOW);
+    EXPECT_EQ(LastAnalogWrite(MOTOR1.ena), 200);
+    EXPECT_EQ(MotorWrites(MOTOR2), 0u);
 }
 
 TEST_F(MotorsTest, DifferentialIgnoresMaskAndDrivesBoth)
@@ -103,8 +120,10 @@ TEST_F(MotorsTest, DifferentialIgnoresMaskAndDrivesBoth)
                             CommandMotors::DIRECTION_FORWARD, CommandMotors::DIRECTION_BACKWARD,
                             100, 50));
 
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR1), ExpectedPulse(CommandMotors::DIRECTION_FORWARD, 100));
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR2), ExpectedPulse(CommandMotors::DIRECTION_BACKWARD, 50));
+    ExpectDirection(MOTOR1, HIGH, LOW);
+    ExpectDirection(MOTOR2, LOW, HIGH);
+    EXPECT_EQ(LastAnalogWrite(MOTOR1.ena), 100);
+    EXPECT_EQ(LastAnalogWrite(MOTOR2.ena), 50);
 }
 
 TEST_F(MotorsTest, SetSpeedKeepsPreviousDirection)
@@ -113,10 +132,11 @@ TEST_F(MotorsTest, SetSpeedKeepsPreviousDirection)
                             CommandMotors::DIRECTION_BACKWARD, 0, 0, 0));
     SendCommand(MakeCommand(CommandMotors::COMMAND_SET_SPEED, MOTOR1_MASK, 0, 0, 255, 0));
 
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR1), ExpectedPulse(CommandMotors::DIRECTION_BACKWARD, 255));
+    ExpectDirection(MOTOR1, LOW, HIGH);
+    EXPECT_EQ(LastAnalogWrite(MOTOR1.ena), 255);
 }
 
-TEST_F(MotorsTest, StopAllReturnsBothChannelsToNeutral)
+TEST_F(MotorsTest, StopAllReleasesBothBridges)
 {
     SendCommand(MakeCommand(CommandMotors::COMMAND_SET_BOTH, 0x03,
                             CommandMotors::DIRECTION_FORWARD, CommandMotors::DIRECTION_FORWARD,
@@ -124,25 +144,18 @@ TEST_F(MotorsTest, StopAllReturnsBothChannelsToNeutral)
 
     SendCommand(MakeCommand(CommandMotors::COMMAND_STOP_ALL, 0x00, 0, 0, 0, 0));
 
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR1), PULSE_NEUTRAL);
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR2), PULSE_NEUTRAL);
-}
-
-TEST_F(MotorsTest, BrakeAndStopUseNeutralPulse)
-{
-    SendCommand(MakeCommand(CommandMotors::COMMAND_SET_BOTH, 0x03,
-                            CommandMotors::DIRECTION_BRAKE, CommandMotors::DIRECTION_STOP,
-                            255, 255));
-
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR1), PULSE_NEUTRAL);
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR2), PULSE_NEUTRAL);
+    for (const Pins& pins : {MOTOR1, MOTOR2})
+    {
+        ExpectDirection(pins, LOW, LOW);
+        EXPECT_EQ(LastAnalogWrite(pins.ena), 0);
+    }
 }
 
 TEST_F(MotorsTest, InvalidDirectionIsIgnored)
 {
     SendCommand(MakeCommand(CommandMotors::COMMAND_SET_DIRECTION, MOTOR1_MASK, 0x7F, 0, 0, 0));
 
-    EXPECT_FALSE(MockPwm::HasChannel(CHANNEL_MOTOR1));
+    EXPECT_EQ(MotorWrites(MOTOR1), 0u);
 }
 
 TEST_F(MotorsTest, RejectsPayloadOfWrongSize)
@@ -150,7 +163,7 @@ TEST_F(MotorsTest, RejectsPayloadOfWrongSize)
     Exchange(PacketBuilder(CommandMotors::PACKET_TYPE, 0x0001).Payload({0x01, 0x02}));
 
     EXPECT_EQ(SentCount(), 0u);
-    EXPECT_EQ(MockPwm::CallCount(), 0u);
+    EXPECT_EQ(MotorWrites(MOTOR1) + MotorWrites(MOTOR2), 0u);
 }
 
 TEST_F(MotorsTest, RejectsEmptyPayload)
@@ -158,7 +171,7 @@ TEST_F(MotorsTest, RejectsEmptyPayload)
     Exchange(PacketBuilder(CommandMotors::PACKET_TYPE, 0x0001));
 
     EXPECT_EQ(SentCount(), 0u);
-    EXPECT_EQ(MockPwm::CallCount(), 0u);
+    EXPECT_EQ(MotorWrites(MOTOR1) + MotorWrites(MOTOR2), 0u);
 }
 
 TEST_F(MotorsTest, AppliesCommandButStaysSilentForZeroPacketId)
@@ -168,35 +181,6 @@ TEST_F(MotorsTest, AppliesCommandButStaysSilentForZeroPacketId)
                 ZERO_PACKET_ID);
 
     EXPECT_EQ(SentCount(), 0u);
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR1), ExpectedPulse(CommandMotors::DIRECTION_FORWARD, 255));
-}
-
-TEST_F(MotorsTest, DoesNothingWhenPwmDriverIsMissing)
-{
-    MockPwm::Get().beginResult = false;
-    InitMotors();
-    ClearPwmLog();
-
-    SendCommand(MakeCommand(CommandMotors::COMMAND_SET_BOTH, 0x03,
-                            CommandMotors::DIRECTION_FORWARD, CommandMotors::DIRECTION_FORWARD,
-                            255, 255));
-
-    EXPECT_EQ(SentCount(), 0u);
-    EXPECT_EQ(MockPwm::CallCount(), 0u);
-}
-
-TEST_F(MotorsTest, RecoversAfterPwmDriverBecomesAvailable)
-{
-    MockPwm::Get().beginResult = false;
-    InitMotors();
-
-    MockPwm::Get().beginResult = true;
-    InitMotors();
-    ClearPwmLog();
-
-    SendCommand(MakeCommand(CommandMotors::COMMAND_SET_BOTH, MOTOR1_MASK,
-                            CommandMotors::DIRECTION_FORWARD, 0, 255, 0));
-
-    EXPECT_EQ(SentCount(), 1u);
-    EXPECT_EQ(MockPwm::ChannelOff(CHANNEL_MOTOR1), ExpectedPulse(CommandMotors::DIRECTION_FORWARD, 255));
+    ExpectDirection(MOTOR1, HIGH, LOW);
+    EXPECT_EQ(LastAnalogWrite(MOTOR1.ena), 255);
 }
